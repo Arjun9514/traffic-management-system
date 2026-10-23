@@ -10,10 +10,22 @@ jobs:
     permissions:
       issues: write
       pull-requests: write
-    steps:
-    - name: 'Auto-assign issue'
+  steps:
+    - name: 'Auto-assign issues'
+      if: github.event_name == 'issues'
       uses: pozil/auto-assign-issue@v1
       with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          assignees: Hnk0406
-          numOfAssignee: 1
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        assignees: Hnk0406, Deepthi-2305
+        numOfAssignee: 2
+
+    - name: 'Assign and Request Reviewer on PRs'
+      if: github.event_name == 'pull_request'
+      run: |
+        gh pr edit "$PR_URL" --add-assignee "$ASSIGNEES"
+        gh pr edit "$PR_URL" --add-reviewer "$REVIEWER"
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PR_URL: ${{ github.event.pull_request.html_url }}
+        ASSIGNEES: Hnk0406,Deepthi-2305
+        REVIEWER: Deepthi-2305
