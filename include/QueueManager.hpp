@@ -10,7 +10,7 @@ class QueueManager {
 private:
     std::map<Approach, std::queue<Vehicle>> queues;
 public:
-    QueueManager() {};
+    QueueManager();
     void enqueueVehicle(const Vehicle& v);
     bool dequeueVehicle(Approach app, Vehicle& outVehicle);
     size_t getQueueSize(Approach app) const;
