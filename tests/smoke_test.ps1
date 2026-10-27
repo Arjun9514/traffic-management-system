@@ -37,7 +37,7 @@ if (($output -join "`n") -match "Traffic Management System Simulation") {
 # 3. Build the manager tests
 Write-Host "`n[3/4] Building manager tests..."
 
-g++ -std=c++17 -Wall -Wextra -Iinclude tests/test_managers.cpp -o manager_tests.exe
+g++ -std=c++17 -Wall -Wextra -Iinclude tests/test_managers.cpp vehicle_manager.cpp src/SignalManager.cpp src/QueueManager.cpp -o manager_tests.exe
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "FAIL: Manager test compilation"
