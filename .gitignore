@@ -2,3 +2,4 @@ traffic_sim.exe
 *.o
 *.obj
 .vscode/
+test_vehicle_generation.exe
