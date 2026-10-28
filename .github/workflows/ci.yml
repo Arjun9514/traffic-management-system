@@ -1,0 +1,67 @@
+
+name: C++ CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and test (C++17)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++
+
+      - name: Build application
+        run: |
+          shopt -s nullglob
+          sources=(src/*.cpp)
+          if [ ${#sources[@]} -eq 0 ]; then
+            echo "No C++ source files found in src/"
+            exit 1
+          fi
+          g++ -std=c++17 -Wall -Wextra -Iinclude \
+            "${sources[@]}" -o traffic_sim
+
+      - name: Build and run tests
+        shell: bash
+        run: |
+          shopt -s nullglob
+          tests=(tests/*.cpp)
+          sources=(src/*.cpp)
+          app_sources=()
+
+          for source in "${sources[@]}"; do
+            if [[ "$source" != "src/main.cpp" ]]; then
+              app_sources+=("$source")
+            fi
+          done
+
+          if [ ${#tests[@]} -eq 0 ]; then
+            echo "No tests/*.cpp files found; build passed, tests skipped."
+            exit 0
+          fi
+
+          mkdir -p test-bin
+
+          for test in "${tests[@]}"; do
+            name=$(basename "$test" .cpp)
+            echo "Building $name"
+            g++ -std=c++17 -Wall -Wextra -Iinclude \
+              "$test" "${app_sources[@]}" -o "test-bin/$name"
+            echo "Running $name"
+            "./test-bin/$name"
+          done
