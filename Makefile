@@ -1,17 +1,28 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -Iinclude
 
-SRCS = src/main.cpp
+SRCS = $(wildcard src/*.cpp)
 OBJS = $(SRCS:.cpp=.o)
+ifeq ($(OS),Windows_NT)
 TARGET = traffic_sim.exe
+else
+TARGET = traffic_sim
+endif
+
+.PHONY: all clean
 
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-.git$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS)
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS)
 
-%%.o: %%.cpp
-.git$(CXX) $(CXXFLAGS) -c $< -o $@
+src/%.o: src/%.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+ifeq ($(OS),Windows_NT)
 clean:
-.gitdel /Q src\*.o $(TARGET) 2>nul
+	del /Q $(subst /,\,$(OBJS)) $(TARGET) 2>NUL
+else
+clean:
+	$(RM) $(OBJS) $(TARGET)
+endif
