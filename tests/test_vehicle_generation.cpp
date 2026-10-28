@@ -24,24 +24,21 @@ void testProbabilityOne() {
 
 void testProbabilityPointOne() {
     VehicleManager manager;
-    Approach approach = Approach::NORTH;
+    int generatedCount = 0;
+    const int trials = 1000;
 
-    bool validResult = true;
-
-    for (int i = 0; i < 100; ++i) {
-        bool generated = manager.generateVehicle(approach, 0.1);
-
-        if (generated &&
-            approach != Approach::NORTH &&
-            approach != Approach::SOUTH &&
-            approach != Approach::EAST &&
-            approach != Approach::WEST) {
-            validResult = false;
+    for (int i = 0; i < trials; ++i) {
+        Approach approach = Approach::NORTH;
+        if (manager.generateVehicle(approach, 0.1)) {
+            ++generatedCount;
         }
     }
 
-    assert(validResult);
-    std::cout << "PASS: Probability 0.1 produces valid generation results\n";
+    double rate = static_cast<double>(generatedCount) / trials;
+    assert(rate > 0.05 && rate < 0.15);
+
+    std::cout << "PASS: Probability 0.1 generated rate = "
+              << rate << "\n";
 }
 
 void testInvalidProbability() {
