@@ -61,54 +61,94 @@ int main() {
     sm.setDurations(2, 1);
 
     // Safety: opposing axes must never both show GREEN or YELLOW.
-    auto safe = [&sm](const char* label) {
-        auto active = [&sm](Approach a) {
-            return sm.getSignalState(a) != SignalColor::RED;
+    auto isSafe = [](const SignalManager& s) {
+        auto active = [&s](Approach a) {
+            return s.getSignalState(a) != SignalColor::RED;
         };
         bool northSouth = active(Approach::NORTH) || active(Approach::SOUTH);
         bool eastWest = active(Approach::EAST) || active(Approach::WEST);
-        CHECK(!(northSouth && eastWest), label);
+        return !(northSouth && eastWest);
     };
 
+    // TC-SIG-01: displayed state of every approach matches the controller.
     sm.changeSignal(0);
     CHECK(sm.getSignalState(Approach::NORTH) == SignalColor::GREEN &&
-          sm.getSignalState(Approach::SOUTH) == SignalColor::GREEN,
-          "TC-SIG-01: North and South green at tick 0");
-    safe("TC-SAFE-01: No conflicting green at tick 0");
+          sm.getSignalState(Approach::SOUTH) == SignalColor::GREEN &&
+          sm.getSignalState(Approach::EAST) == SignalColor::RED &&
+          sm.getSignalState(Approach::WEST) == SignalColor::RED,
+          "TC-SIG-01: Approach states at tick 0 (N+S green, E+W red)");
 
+    // TC-SIG-02: automatic mode follows the predefined safe sequence.
     sm.changeSignal(2);
     CHECK(sm.getSignalState(Approach::NORTH) == SignalColor::YELLOW &&
           sm.getSignalState(Approach::SOUTH) == SignalColor::YELLOW,
           "TC-SIG-02: North-South yellow after green duration");
-    safe("Safety during North-South yellow");
-
     sm.changeSignal(3);
     CHECK(sm.getSignalState(Approach::EAST) == SignalColor::GREEN &&
           sm.getSignalState(Approach::WEST) == SignalColor::GREEN,
-          "TC-SIG-03: East and West green after North-South yellow");
-    safe("Safety during East-West green");
-
+          "TC-SIG-02: East-West green after North-South yellow");
     sm.changeSignal(5);
     CHECK(sm.getSignalState(Approach::EAST) == SignalColor::YELLOW &&
           sm.getSignalState(Approach::WEST) == SignalColor::YELLOW,
-          "TC-SIG-04: East-West yellow after green duration");
-    safe("Safety during East-West yellow");
-
+          "TC-SIG-02: East-West yellow after green duration");
     sm.changeSignal(6);
     CHECK(sm.getSignalState(Approach::NORTH) == SignalColor::GREEN,
-          "TC-SIG-05: Cycle returns to North-South");
+          "TC-SIG-02: Cycle returns to North-South");
 
+    // TC-SIG-03: changed durations apply to the next phase.
+    SignalManager sd;
+    sd.reset();
+    sd.setDurations(3, 2);
+    sd.changeSignal(2);
+    CHECK(sd.getSignalState(Approach::NORTH) == SignalColor::GREEN,
+          "TC-SIG-03: Longer green keeps North green at tick 2");
+    sd.changeSignal(3);
+    CHECK(sd.getSignalState(Approach::NORTH) == SignalColor::YELLOW,
+          "TC-SIG-03: North yellow after new green duration");
+    sd.changeSignal(5);
+    CHECK(sd.getSignalState(Approach::EAST) == SignalColor::GREEN,
+          "TC-SIG-03: East green after new yellow duration");
+    sd.setDurations(0, -1);
+    sd.changeSignal(5);
+    CHECK(sd.getSignalState(Approach::EAST) == SignalColor::GREEN,
+          "TC-SIG-03: Invalid durations are ignored");
+
+    // TC-SIG-04: manual selection is applied and not overridden.
     sm.toggleManualMode(true);
     sm.setManualPhase(Approach::WEST);
-    sm.changeSignal(3);
-    CHECK(sm.getSignalState(Approach::WEST) == SignalColor::GREEN,
-          "Manual mode preserves selected phase");
-    safe("Manual mode safety");
+    sm.changeSignal(0);
+    CHECK(sm.getSignalState(Approach::WEST) == SignalColor::GREEN &&
+          sm.getSignalState(Approach::NORTH) == SignalColor::RED &&
+          sm.getSignalState(Approach::SOUTH) == SignalColor::RED &&
+          sm.getSignalState(Approach::EAST) == SignalColor::RED,
+          "TC-SIG-04: Manual phase applied and automatic cycle paused");
 
     sm.toggleManualMode(false);
     sm.changeSignal(0);
     CHECK(sm.getSignalState(Approach::NORTH) == SignalColor::GREEN,
-          "Automatic mode resumes after manual mode");
+          "TC-SIG-04: Automatic mode resumes after manual mode");
+
+    // TC-SAFE-01: no conflicting signals at any tick over several cycles,
+    // with default and changed durations, and in manual mode.
+    bool allSafe = true;
+    SignalManager sf;
+    sf.reset();
+    for (int t = 0; t < 100; ++t) {
+        sf.changeSignal(t);
+        if (!isSafe(sf)) allSafe = false;
+    }
+    sf.setDurations(4, 2);
+    for (int t = 0; t < 100; ++t) {
+        sf.changeSignal(t);
+        if (!isSafe(sf)) allSafe = false;
+    }
+    sf.toggleManualMode(true);
+    for (Approach a : {Approach::NORTH, Approach::SOUTH,
+                       Approach::EAST, Approach::WEST}) {
+        sf.setManualPhase(a);
+        if (!isSafe(sf)) allSafe = false;
+    }
+    CHECK(allSafe, "TC-SAFE-01: No conflicting signals over 200 ticks and manual mode");
 
     std::cout << "\nPassed: " << passed
               << " | Failed: " << failed << '\n';
