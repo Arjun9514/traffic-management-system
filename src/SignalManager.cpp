@@ -1,9 +1,20 @@
-﻿
-#include "SignalManager.hpp"
+﻿#include "SignalManager.hpp"
 
 SignalColor SignalManager::getSignalState(Approach app) const {
     auto it = signals.find(app);
     return it == signals.end() ? SignalColor::RED : it->second;
+}
+
+// Sets one axis (North-South or East-West) to the given colour and
+// forces the other axis to RED. Opposing axes are never green together.
+static void setAxis(std::map<Approach, SignalColor>& signals,
+                    bool northSouth, SignalColor colour) {
+    const SignalColor ns = northSouth ? colour : SignalColor::RED;
+    const SignalColor ew = northSouth ? SignalColor::RED : colour;
+    signals[Approach::NORTH] = ns;
+    signals[Approach::SOUTH] = ns;
+    signals[Approach::EAST] = ew;
+    signals[Approach::WEST] = ew;
 }
 
 void SignalManager::changeSignal(int tick) {
@@ -14,26 +25,16 @@ void SignalManager::changeSignal(int tick) {
     const int cycle = 2 * (green + yellow);
     const int phase = tick % cycle;
 
+    // Phase 1: North-South green, then yellow.
+    // Phase 2: East-West green, then yellow.
     if (phase < green) {
-        signals[Approach::NORTH] = SignalColor::GREEN;
-        signals[Approach::SOUTH] = SignalColor::RED;
-        signals[Approach::EAST] = SignalColor::RED;
-        signals[Approach::WEST] = SignalColor::RED;
+        setAxis(signals, true, SignalColor::GREEN);
     } else if (phase < green + yellow) {
-        signals[Approach::NORTH] = SignalColor::YELLOW;
-        signals[Approach::SOUTH] = SignalColor::RED;
-        signals[Approach::EAST] = SignalColor::RED;
-        signals[Approach::WEST] = SignalColor::RED;
+        setAxis(signals, true, SignalColor::YELLOW);
     } else if (phase < 2 * green + yellow) {
-        signals[Approach::NORTH] = SignalColor::RED;
-        signals[Approach::SOUTH] = SignalColor::RED;
-        signals[Approach::EAST] = SignalColor::GREEN;
-        signals[Approach::WEST] = SignalColor::RED;
+        setAxis(signals, false, SignalColor::GREEN);
     } else {
-        signals[Approach::NORTH] = SignalColor::RED;
-        signals[Approach::SOUTH] = SignalColor::RED;
-        signals[Approach::EAST] = SignalColor::YELLOW;
-        signals[Approach::WEST] = SignalColor::RED;
+        setAxis(signals, false, SignalColor::YELLOW);
     }
 }
 
@@ -56,8 +57,5 @@ void SignalManager::toggleManualMode(bool enable) {
 
 void SignalManager::reset() {
     isManualMode = false;
-    signals[Approach::NORTH] = SignalColor::GREEN;
-    signals[Approach::SOUTH] = SignalColor::RED;
-    signals[Approach::EAST] = SignalColor::RED;
-    signals[Approach::WEST] = SignalColor::RED;
+    setAxis(signals, true, SignalColor::GREEN);
 }

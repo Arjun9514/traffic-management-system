@@ -1,5 +1,4 @@
-﻿
-#include <iostream>
+﻿#include <iostream>
 #include "../include/Vehicle.hpp"
 #include "../include/QueueManager.hpp"
 #include "../include/SignalManager.hpp"
@@ -61,39 +60,43 @@ int main() {
     sm.reset();
     sm.setDurations(2, 1);
 
+    // Safety: opposing axes must never both show GREEN or YELLOW.
     auto safe = [&sm](const char* label) {
-        int greens = 0;
-        for (Approach a : {Approach::NORTH, Approach::SOUTH,
-                           Approach::EAST, Approach::WEST}) {
-            if (sm.getSignalState(a) == SignalColor::GREEN)
-                ++greens;
-        }
-        CHECK(greens <= 1, label);
+        auto active = [&sm](Approach a) {
+            return sm.getSignalState(a) != SignalColor::RED;
+        };
+        bool northSouth = active(Approach::NORTH) || active(Approach::SOUTH);
+        bool eastWest = active(Approach::EAST) || active(Approach::WEST);
+        CHECK(!(northSouth && eastWest), label);
     };
 
     sm.changeSignal(0);
-    CHECK(sm.getSignalState(Approach::NORTH) == SignalColor::GREEN,
-          "TC-SIG-01: North green at tick 0");
+    CHECK(sm.getSignalState(Approach::NORTH) == SignalColor::GREEN &&
+          sm.getSignalState(Approach::SOUTH) == SignalColor::GREEN,
+          "TC-SIG-01: North and South green at tick 0");
     safe("TC-SAFE-01: No conflicting green at tick 0");
 
     sm.changeSignal(2);
-    CHECK(sm.getSignalState(Approach::NORTH) == SignalColor::YELLOW,
-          "TC-SIG-02: North yellow after green duration");
-    safe("Safety during North yellow");
+    CHECK(sm.getSignalState(Approach::NORTH) == SignalColor::YELLOW &&
+          sm.getSignalState(Approach::SOUTH) == SignalColor::YELLOW,
+          "TC-SIG-02: North-South yellow after green duration");
+    safe("Safety during North-South yellow");
 
     sm.changeSignal(3);
-    CHECK(sm.getSignalState(Approach::EAST) == SignalColor::GREEN,
-          "TC-SIG-03: East green after North yellow");
-    safe("Safety during East green");
+    CHECK(sm.getSignalState(Approach::EAST) == SignalColor::GREEN &&
+          sm.getSignalState(Approach::WEST) == SignalColor::GREEN,
+          "TC-SIG-03: East and West green after North-South yellow");
+    safe("Safety during East-West green");
 
     sm.changeSignal(5);
-    CHECK(sm.getSignalState(Approach::EAST) == SignalColor::YELLOW,
-          "TC-SIG-04: East yellow after green duration");
-    safe("Safety during East yellow");
+    CHECK(sm.getSignalState(Approach::EAST) == SignalColor::YELLOW &&
+          sm.getSignalState(Approach::WEST) == SignalColor::YELLOW,
+          "TC-SIG-04: East-West yellow after green duration");
+    safe("Safety during East-West yellow");
 
     sm.changeSignal(6);
     CHECK(sm.getSignalState(Approach::NORTH) == SignalColor::GREEN,
-          "TC-SIG-05: Cycle returns to North");
+          "TC-SIG-05: Cycle returns to North-South");
 
     sm.toggleManualMode(true);
     sm.setManualPhase(Approach::WEST);

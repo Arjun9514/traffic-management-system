@@ -6,7 +6,7 @@ Write-Host "=== Traffic Management Smoke Test ==="
 # 1. Build the main traffic simulation
 Write-Host "`n[1/4] Building traffic simulation..."
 
-g++ -std=c++17 -Wall -Wextra -Iinclude src/main.cpp -o traffic_sim.exe
+g++ -std=c++17 -Wall -Wextra -Iinclude src/main.cpp src/QueueManager.cpp -o traffic_sim.exe
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "FAIL: Simulation compilation"
