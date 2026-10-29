@@ -39,10 +39,26 @@ jobs:
       - name: Build and run tests
         shell: bash
         run: |
+          set -euo pipefail
           shopt -s nullglob
+
           tests=(tests/*.cpp)
           sources=(src/*.cpp)
           app_sources=()
+
+          required_tests=(
+            tests/test_managers.cpp
+            tests/test_queue_manager.cpp
+            tests/test_statistics_manager.cpp
+            tests/test_vehicle_generation.cpp
+          )
+
+          for test in "${required_tests[@]}"; do
+            if [[ ! -f "$test" ]]; then
+              echo "ERROR: Required test file missing: $test"
+              exit 1
+            fi
+          done
 
           for source in "${sources[@]}"; do
             if [[ "$source" != "src/main.cpp" ]]; then
@@ -50,18 +66,15 @@ jobs:
             fi
           done
 
-          if [ ${#tests[@]} -eq 0 ]; then
-            echo "No tests/*.cpp files found; build passed, tests skipped."
-            exit 0
-          fi
-
           mkdir -p test-bin
 
           for test in "${tests[@]}"; do
             name=$(basename "$test" .cpp)
             echo "Building $name"
+
             g++ -std=c++17 -Wall -Wextra -Iinclude \
               "$test" "${app_sources[@]}" -o "test-bin/$name"
+
             echo "Running $name"
             "./test-bin/$name"
           done
