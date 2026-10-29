@@ -3,7 +3,7 @@
 #include <iomanip>
 
 void StatisticsManager::recordProcessedVehicle(const Vehicle& v, int exitTick) {
-    int wait = exitTick - v.entryTick;
+    long long wait = static_cast<long long>(exitTick) - v.entryTick;
     if (wait < 0) {
         std::cerr << "[Statistics] Warning: negative wait time for vehicle "
                   << "(entryTick=" << v.entryTick << ", exitTick=" << exitTick
