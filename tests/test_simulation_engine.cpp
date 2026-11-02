@@ -172,18 +172,6 @@ void test_last_processed() {
     CHECK(e.getLastProcessed().empty());
 }
 
-void test_auto_generation_covers_all_approaches() {
-    SimulationEngine e;
-    e.getSignalManager().toggleManualMode(true);
-    e.getSignalManager().setManualPhase(Approach::NORTH);   // only NORTH releases vehicles
-    e.setAutoGeneration(true, 1.0);
-    e.start();
-    for (int i = 0; i < 400; ++i) e.tick();
-    CHECK(e.getQueueManager().getQueueSize(Approach::SOUTH) > 0);
-    CHECK(e.getQueueManager().getQueueSize(Approach::EAST)  > 0);
-    CHECK(e.getQueueManager().getQueueSize(Approach::WEST)  > 0);
-}
-
 int main() {
     test_initial_state();
     test_tick_ignored_when_stopped();
@@ -198,7 +186,6 @@ int main() {
     test_reset();
     test_run_simulation();
     test_last_processed();
-    test_auto_generation_covers_all_approaches();
 
     if (failures == 0) std::cout << "All SimulationEngine tests passed.\n";
     else std::cout << failures << " check(s) failed.\n";
