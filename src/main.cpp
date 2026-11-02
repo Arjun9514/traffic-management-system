@@ -145,14 +145,45 @@ void printView(Session& s) {
 
 void printStatistics(Session& s) {
     const int ticks = s.engine.getCurrentTick();
-    s.engine.getStatsManager().printSummary(ticks);
-    std::cout << "Still waiting:      " << s.engine.getQueueManager().getTotalWaitingCount() << "\n"
-              << "By approach (processed / waiting):\n";
+    const auto& stats = s.engine.getStatsManager();
+    const auto& queues = s.engine.getQueueManager();
+
+    constexpr int kWidth = 41;
+    const std::string eq(kWidth, '=');
+    const std::string dash(kWidth, '-');
+
+    // Save stream state so the rest of the program isn't affected
+    const std::ios_base::fmtflags oldFlags = std::cout.flags();
+    const std::streamsize oldPrecision = std::cout.precision();
+
+    std::cout << "\n" << eq << "\n"
+              << "          SIMULATION SUMMARY\n"
+              << eq << "\n";
+
+    std::cout << std::left << std::setw(28) << "Metric" << "Value\n"
+              << dash << "\n"
+              << std::setw(28) << "Total simulation ticks" << ticks << "\n"
+              << std::setw(28) << "Vehicles processed" << stats.getProcessedCount() << "\n"
+              << std::setw(28) << "Vehicles still waiting" << queues.getTotalWaitingCount() << "\n"
+              << std::fixed << std::setprecision(2)
+              << std::setw(28) << "Average waiting time" << stats.calculateAverageWaitTime() << " ticks\n"
+              << std::setprecision(4)
+              << std::setw(28) << "Throughput" << stats.calculateThroughput(ticks) << " vehicles/tick\n";
+
+    std::cout << "\n"
+              << std::setw(12) << "Approach" << std::setw(15) << "Processed" << "Waiting\n"
+              << dash << "\n";
+
     for (int i = 0; i < 4; ++i) {
-        std::cout << "  " << std::left << std::setw(6) << approachName(kApproaches[i]) << " "
-                  << s.processedBy[i] << " / "
-                  << s.engine.getQueueManager().getQueueSize(kApproaches[i]) << "\n";
+        std::cout << std::setw(12) << approachName(kApproaches[i])
+                  << std::setw(15) << s.processedBy[i]
+                  << queues.getQueueSize(kApproaches[i]) << "\n";
     }
+    std::cout << eq << "\n";
+
+    // Restore stream state
+    std::cout.flags(oldFlags);
+    std::cout.precision(oldPrecision);
 }
 
 // One line per tick (SRS 3.1) plus one line per vehicle that crossed.
@@ -167,10 +198,9 @@ void printTickLine(Session& s) {
     }
     std::cout << " done=" << s.engine.getStatsManager().getProcessedCount() << "\n";
     for (const Vehicle& v : s.engine.getLastProcessed()) {
-        std::cout << "        " << paint("-> Vehicle #" + std::to_string(v.id) + " crossed from "
-                                         + approachName(v.approach), "\033[32m")
-                  << " (waited " << (t - v.entryTick) << " ticks)\n";
-        s.processedBy[static_cast<int>(v.approach)]++;
+    std::cout << "        " << paint("-> Vehicle #" + std::to_string(v.id) + " crossed from "
+                                     + approachName(v.approach), "\033[32m")
+              << " (waited " << (t - v.entryTick) << " ticks)\n";
     }
 }
 
@@ -246,7 +276,12 @@ void doStep(Session& s) {
                     s.engine.getVehicleManager().createVehicle(a, s.engine.getCurrentTick()));
             }
         }
-        s.engine.tick();
+                s.engine.tick();
+
+        for (const Vehicle& v : s.engine.getLastProcessed()) {
+            s.processedBy[static_cast<int>(v.approach)]++;
+        }
+
         printTickLine(s);
     }
 }
