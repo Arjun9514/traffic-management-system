@@ -200,11 +200,10 @@ void printTickLine(Session& s) {
     }
     std::cout << " done=" << s.engine.getStatsManager().getProcessedCount() << "\n";
     for (const Vehicle& v : s.engine.getLastProcessed()) {
-        std::cout << "        " << paint("-> Vehicle #" + std::to_string(v.id) + " crossed from "
-                                         + approachName(v.approach), "\033[32m")
-                  << " (waited " << (t - v.entryTick) << " ticks)\n";
-        s.processedBy[static_cast<int>(v.approach)]++;
-    }
+    std::cout << "        " << paint("-> Vehicle #" + std::to_string(v.id) + " crossed from "
+                                     + approachName(v.approach), "\033[32m")
+              << " (waited " << (t - v.entryTick) << " ticks)\n";
+}
 }
 
 // ---------- menu actions ----------
@@ -280,6 +279,11 @@ void doStep(Session& s) {
             }
         }
         s.engine.tick();
+
+        for (const Vehicle& v : s.engine.getLastProcessed()) {
+              s.processedBy[static_cast<int>(v.approach)]++;
+        }
+
         printTickLine(s);
     }
 }
